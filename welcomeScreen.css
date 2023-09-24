@@ -1,0 +1,36 @@
+#welcomeScreen {
+  position: relative;
+  width: 800px;
+  height: 550px;
+  border: 1px solid black;
+  background-color: rgb(255, 223, 119);
+  /* background-image: url("images/welcome-screen2.png"); */
+  background-size: 100% 100%;
+}
+#paraWelcome {
+  display: flex;
+  margin-top: 60px;
+  font-size: 60px;
+  font-family: cursive;
+  color: white;
+  text-align: center;
+  justify-content: center;
+}
+
+.btns-welcomeScreen {
+  display: flex;
+  justify-content: center;
+  height: 70px;
+  width: 300px;
+  padding: 0;
+  margin: 0 auto;
+  margin-bottom: 50px;
+  border: 7px groove black;
+  border-radius: 25px;
+  overflow: hidden;
+  background-color: rgb(255, 255, 255);
+  font-size: 40px;
+  font-family: cursive;
+  text-align: center;
+  color: black;
+}

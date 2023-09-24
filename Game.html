@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Project2 Part2</title>
+    <link rel="stylesheet" type="text/css" href="welcomeScreen.css" />
+    <link rel="stylesheet" type="text/css" href="gameScreen.css" />
+    <script src="js/jquery-3.6.4.min.js"></script>
+  </head>
+  <body>
+    <div id="game">
+      <div id="welcomeScreen">
+        <p id="paraWelcome">CATCHING BUGS!</p>
+        <button class="btns-welcomeScreen" id="btnNewGame">New Game</button>
+        <button class="btns-welcomeScreen" id="btnExit">Exit</button>
+      </div>
+      <div id="gameScreen">
+        <canvas
+          id="gameCanvas"
+          width="800"
+          height="550"
+          style="background-color: rgb(255, 223, 119)"
+        ></canvas>
+        <button class="btns-controls" id="btnPause" onclick="pauseGame()">
+          Pause
+        </button>
+        <button class="btns-controls" id="btnContinue" onclick="continueGame()">
+          Continue
+        </button>
+        <button class="btns-controls" id="btnRestart" onclick="restartGame()">
+          Restart
+        </button>
+        <button class="btns-time" id="btnOneMinute" onclick="setOneMinute()">
+          1 Minute
+        </button>
+        <button
+          class="btns-time"
+          id="btnThreeMinutes"
+          onclick="setThreeMinutes()"
+        >
+          3 Minutes
+        </button>
+        <button
+          class="btns-time"
+          id="btnFourMinutes"
+          onclick="setFourMinutes()"
+        >
+          4 Minutes
+        </button>
+        <button
+          class="btns-time"
+          id="btnFiveMinutes"
+          onclick="setFiveMinutes()"
+        >
+          5 Minutes
+        </button>
+        <div id="gameOver">
+          <p>Game Over</p>
+          <p id="finalScore">Your Score:</p>
+          <button id="gameOverExit">Exit</button>
+        </div>
+      </div>
+    </div>
+    <div id="songs">
+      <audio id="startSong" class="song">
+        <source src="sounds/start-game.wav" type="audio/wav" />
+        Your browser does not support this audio format
+      </audio>
+      <audio id="success" class="song">
+        <source src="sounds/success-voice.wav" type="audio/wav" />
+        Your browser does not support this audio format
+      </audio>
+      <audio id="unhappy" class="song">
+        <source src="sounds/error-sound.wav" type="audio/wav" />
+        Your browser does not support this audio format
+      </audio>
+      <audio id="endsong" class="song">
+        <source src="sounds/game-end.wav" type="audio/wav" />
+        Your browser does not support this audio format
+      </audio>
+    </div>
+
+    <script>
+      let timer;
+      let gameTime;
+      let gameTimeLimit = 4000 * 60;
+      let isGamePaused = false;
+      var gameCanvas = document.getElementById("gameCanvas");
+      var ctx = gameCanvas.getContext("2d");
+      let catCenterX = 400;
+      let catCenterY = 500;
+      let l = 5; // the height of the net stick
+      let s = 200; // the width of the net stick
+      let moveSpeed; // the speed of cat moving
+      let isNetLeft = true;
+      let isNetDownToHorizontal = false;
+      let netLeftX;
+      let netRightX;
+      let netBottomY;
+      let score = 0;
+      var balls = [];
+      let ballMoveTime;
+
+      // set the state of different screens
+      $(document).ready(() => {
+        $("#gameScreen").hide();
+        $("#welcomeScreen").show();
+
+        $("#btnExit").click(() => {
+          $("#welcomeScreen").hide();
+          $("#gameScreen").hide();
+        });
+
+        $("#btnNewGame").click(() => {
+          $("#welcomeScreen").hide();
+          $("#gameScreen").show();
+          $("#gameOver").hide();
+          drawCat();
+
+          setInterval(function () {
+            moveCat();
+          }, 10);
+
+          if (!!timer) {
+            clearInterval(timer);
+          }
+          gameTime = 0;
+          balls = [];
+          score = 0;
+          isNetLeft = true;
+          isNetDownToHorizontal = false;
+          document.getElementById("startSong").play();
+          timer = setInterval(animate, 10);
+        });
+
+        $("#gameOverExit").click(() => {
+          $("#welcomeScreen").show();
+          $("#gameScreen").hide();
+        });
+      });
+
+      function pauseGame() {
+        isGamePaused = true;
+        if (!!timer) {
+          clearInterval(timer);
+        }
+      }
+
+      function continueGame() {
+        if (isGamePaused) {
+          timer = setInterval(animate, 10);
+          isGamePaused = false;
+        }
+      }
+      function restartGame() {
+        document.getElementById("gameOver").style.display = "none";
+        document.getElementById("startSong").play();
+        score = 0;
+        balls = [];
+        catCenterX = 400;
+        catCenterY = 500;
+        isNetLeft = true;
+        isNetDownToHorizontal = false;
+        drawCat();
+        if (!!timer) {
+          clearInterval(timer);
+        }
+        gameTime = 0;
+        timer = setInterval(animate, 10);
+      }
+
+      function endGame() {
+        document.getElementById("gameOver").style.display = "block";
+        document.getElementById("finalScore").innerHTML =
+          "Your Score is: " + score;
+        document.getElementById("endsong").play();
+        score = 0;
+        gameTime = -1;
+        balls = [];
+        clearInterval(timer);
+        catCenterX = 400;
+        catCenterY = 500;
+        isNetLeft = true;
+        isNetDownToHorizontal = false;
+        ctx.font = '24px "cursive"';
+        ctx.fillStyle = "black";
+        ctx.fillText("hh", 0, 30);
+      }
+
+      function showScore(score) {
+        ctx.font = '24px "cursive"';
+        ctx.fillStyle = "black";
+        ctx.fillText("Score: " + score, 350, 30);
+      }
+
+      function setOneMinute() {
+        gameTimeLimit = 1000 * 60;
+        restartGame();
+      }
+
+      function setThreeMinutes() {
+        gameTimeLimit = 3000 * 60;
+        restartGame();
+      }
+
+      function setFourMinutes() {
+        gameTimeLimit = 4000 * 60;
+        restartGame();
+      }
+
+      function setFiveMinutes() {
+        gameTimeLimit = 5000 * 60;
+        restartGame();
+      }
+
+      //drawCat
+      function drawCat() {
+        //draw tail
+        if (Math.floor(gameTime / 2000) % 2) {
+          ctx.beginPath();
+          ctx.moveTo(catCenterX + 50, catCenterY + 50);
+          ctx.lineTo(catCenterX + 50 + 50, catCenterY + 50);
+          ctx.arc(
+            catCenterX + 50 + 50,
+            catCenterY + 50 - 4,
+            4,
+            0.5 * Math.PI,
+            1.5 * Math.PI,
+            true
+          );
+          ctx.lineTo(catCenterX + 50, catCenterY + 50 - 8);
+          ctx.closePath();
+          ctx.lineWidth = "10";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+          ctx.fillStyle = "black";
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.moveTo(catCenterX + 50 + 15, catCenterY + 50);
+          ctx.lineTo(catCenterX + 50 + 15, catCenterY + 50 - 8);
+          ctx.closePath();
+          ctx.lineWidth = "5";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(catCenterX + 50 + 30, catCenterY + 50);
+          ctx.lineTo(catCenterX + 50 + 30, catCenterY + 50 - 8);
+          ctx.closePath();
+          ctx.lineWidth = "5";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(catCenterX + 50 + 45, catCenterY + 50);
+          ctx.lineTo(catCenterX + 50 + 45, catCenterY + 50 - 8);
+          ctx.closePath();
+          ctx.lineWidth = "5";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(catCenterX - 50, catCenterY + 50);
+          ctx.lineTo(catCenterX - 50 - 50, catCenterY + 50);
+          ctx.arc(
+            catCenterX - 50 - 50,
+            catCenterY + 50 - 4,
+            4,
+            0.5 * Math.PI,
+            1.5 * Math.PI,
+            false
+          );
+          ctx.lineTo(catCenterX - 50, catCenterY + 50 - 8);
+          ctx.closePath();
+          ctx.lineWidth = "10";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+          ctx.fillStyle = "black";
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.moveTo(catCenterX - 50 - 15, catCenterY + 50);
+          ctx.lineTo(catCenterX - 50 - 15, catCenterY + 50 - 8);
+          ctx.closePath();
+          ctx.lineWidth = "5";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(catCenterX - 50 - 30, catCenterY + 50);
+          ctx.lineTo(catCenterX - 50 - 30, catCenterY + 50 - 8);
+          ctx.closePath();
+          ctx.lineWidth = "5";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(catCenterX - 50 - 45, catCenterY + 50);
+          ctx.lineTo(catCenterX - 50 - 45, catCenterY + 50 - 8);
+          ctx.closePath();
+          ctx.lineWidth = "5";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+        }
+
+        //draw ears
+        ctx.beginPath();
+        ctx.moveTo(catCenterX - 70, catCenterY - 70);
+        ctx.lineTo(catCenterX - 80, catCenterY - 150);
+        ctx.lineTo(catCenterX - 35, catCenterY - 70 - 60.62);
+        ctx.closePath();
+        ctx.lineWidth = "10";
+        ctx.strokeStyle = "rgb(62,47,36)";
+        ctx.stroke();
+        ctx.fillStyle = "black";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(catCenterX + 70, catCenterY - 70);
+        ctx.lineTo(catCenterX + 80, catCenterY - 150);
+        ctx.lineTo(catCenterX + 35, catCenterY - 70 - 60.62);
+        ctx.closePath();
+        ctx.lineWidth = "10";
+        ctx.strokeStyle = "rgb(62,47,36)";
+        ctx.stroke();
+        ctx.fillStyle = "black";
+        ctx.fill();
+
+        //draw head
+        ctx.beginPath();
+        ctx.arc(catCenterX, catCenterY - 70, 70, 0, 2 * Math.PI);
+        ctx.closePath();
+        ctx.lineWidth = "10";
+        ctx.strokeStyle = "rgb(62,47,36)";
+        ctx.stroke();
+        ctx.fillStyle = "black";
+        ctx.fill();
+
+        //draw left eye
+        ctx.beginPath();
+        ctx.arc(catCenterX - 35, catCenterY - 70, 25, 0, 2 * Math.PI);
+        ctx.closePath();
+        ctx.lineWidth = "10";
+        ctx.strokeStyle = "rgb(62,47,36)";
+        ctx.stroke();
+        ctx.fillStyle = "rgb(255, 245, 210)";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.rect(catCenterX - 35 - 5, catCenterY - 70 - 15, 8, 25);
+        ctx.closePath();
+        ctx.fillStyle = "black";
+        ctx.fill();
+
+        //draw right eye
+        ctx.beginPath();
+        ctx.arc(catCenterX + 35, catCenterY - 70, 25, 0, 2 * Math.PI);
+        ctx.closePath();
+        ctx.lineWidth = "10";
+        ctx.strokeStyle = "rgb(62,47,36)";
+        ctx.stroke();
+        ctx.fillStyle = "rgb(255, 245, 210)";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.rect(catCenterX + 35 - 5, catCenterY - 70 - 15, 8, 25);
+        ctx.closePath();
+        ctx.fillStyle = "black";
+        ctx.fill();
+
+        //draw mouth
+        ctx.beginPath();
+        ctx.moveTo(catCenterX, catCenterY - 25);
+        ctx.lineTo(catCenterX + 5, catCenterY - 25 - 10);
+        ctx.lineTo(catCenterX - 5, catCenterY - 25 - 10);
+        ctx.lineTo(catCenterX, catCenterY - 25);
+        ctx.closePath();
+        ctx.lineWidth = "5";
+        ctx.strokeStyle = "rgb(62,47,36)";
+        ctx.stroke();
+        ctx.fillStyle = "rgb(255, 245, 210)";
+        ctx.fill();
+
+        //draw body
+        ctx.beginPath();
+        ctx.arc(catCenterX, catCenterY + 50, 50, 1 * Math.PI, 2 * Math.PI);
+        ctx.lineTo(catCenterX - 50, catCenterY + 50);
+        ctx.closePath();
+        ctx.lineWidth = "10";
+        ctx.strokeStyle = "rgb(62,47,36)";
+        ctx.stroke();
+        ctx.fillStyle = "black";
+        ctx.fill();
+
+        //draw bell
+        ctx.beginPath();
+        ctx.arc(catCenterX, catCenterY, 6, 0, 2 * Math.PI);
+        ctx.closePath();
+        ctx.lineWidth = "10";
+        ctx.strokeStyle = "rgb(62,47,36)";
+        ctx.stroke();
+        ctx.fillStyle = "rgb(255, 245, 210)";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(catCenterX, catCenterY);
+        ctx.lineTo(catCenterX, catCenterY + 6);
+        ctx.closePath();
+        ctx.lineWidth = "3";
+        ctx.strokeStyle = "rgb(62,47,36)";
+        ctx.stroke();
+
+        //Control and draw the net
+        // when the net is on the left
+        if (isNetLeft) {
+          //draw left hand
+          ctx.beginPath();
+          ctx.moveTo(catCenterX - 10, catCenterY + 20);
+          ctx.lineTo(catCenterX - 10, catCenterY + 40);
+          ctx.arc(catCenterX - 20, catCenterY + 40, 10, 0, 1 * Math.PI);
+          ctx.lineTo(catCenterX - 30, catCenterY + 20);
+          ctx.lineWidth = "5";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+
+          // Draw left net stick and net
+          if (isNetDownToHorizontal) {
+            // draw left net stick when horizontal
+            ctx.beginPath();
+            ctx.moveTo(catCenterX + 10, catCenterY + 30);
+            ctx.lineTo(catCenterX + 10, catCenterY + 30 + l);
+            ctx.lineTo(catCenterX + 10 - s, catCenterY + 30 + l);
+            ctx.lineTo(catCenterX + 10 - s, catCenterY + 30);
+            ctx.closePath();
+            ctx.fillStyle = "rgb(255, 245, 210)";
+            ctx.fill();
+            //draw left net when horizontal
+            ctx.beginPath();
+            ctx.arc(
+              catCenterX + 10 - s + 40,
+              catCenterY + 30,
+              40,
+              1 * Math.PI,
+              2 * Math.PI
+            );
+            ctx.lineWidth = "3";
+            ctx.strokeStyle = "rgb(62,47,36)";
+            ctx.stroke();
+          } else {
+            // draw left net stick when sloping
+            ctx.beginPath();
+            ctx.moveTo(
+              catCenterX + 10 + 0.25 * l,
+              catCenterY + 30 + 0.5 * l - 0.433 * l
+            );
+            ctx.lineTo(
+              catCenterX + 10 - 0.25 * l,
+              catCenterY + 30 + 0.5 * l + 0.433 * l
+            );
+            ctx.lineTo(
+              catCenterX + 10 - 0.25 * l - 0.866 * s,
+              catCenterY + 30 + 0.5 * l + 0.433 * l - 0.5 * s
+            );
+            ctx.lineTo(
+              catCenterX + 10 + 0.25 * l - 0.866 * s,
+              catCenterY + 30 + 0.5 * l - 0.433 * l - 0.5 * s
+            );
+            ctx.closePath();
+            ctx.fillStyle = "rgb(255, 245, 210)";
+            ctx.fill();
+            //draw left net when sloping
+            ctx.beginPath();
+            ctx.arc(
+              catCenterX + 10 + 0.25 * l - 0.866 * s + 0.866 * 40,
+              catCenterY + 30 + 0.5 * l - 0.433 * l - 0.5 * s + 0.5 * 40,
+              40,
+              1.167 * Math.PI,
+              0.167 * Math.PI
+            );
+            ctx.lineWidth = "3";
+            ctx.strokeStyle = "rgb(62,47,36)";
+            ctx.stroke();
+          }
+          //draw right hand
+          ctx.beginPath();
+          ctx.moveTo(catCenterX + 30, catCenterY + 20);
+          ctx.lineTo(catCenterX + 30, catCenterY + 40);
+          ctx.arc(catCenterX + 20, catCenterY + 40, 10, 0, 1 * Math.PI);
+          ctx.lineTo(catCenterX + 10, catCenterY + 20);
+          ctx.lineWidth = "5";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+        }
+
+        //when goes right
+        if (!isNetLeft) {
+          //draw right hand
+          ctx.beginPath();
+          ctx.moveTo(catCenterX + 30, catCenterY + 20);
+          ctx.lineTo(catCenterX + 30, catCenterY + 40);
+          ctx.arc(catCenterX + 20, catCenterY + 40, 10, 0, 1 * Math.PI);
+          ctx.lineTo(catCenterX + 10, catCenterY + 20);
+          ctx.lineWidth = "5";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+
+          // Draw right net stick and net
+          if (isNetDownToHorizontal) {
+            // draw right net stick when horizontal
+            ctx.beginPath();
+            ctx.moveTo(catCenterX - 10, catCenterY + 30);
+            ctx.lineTo(catCenterX - 10, catCenterY + 30 + l);
+            ctx.lineTo(catCenterX - 10 + s, catCenterY + 30 + l);
+            ctx.lineTo(catCenterX - 10 + s, catCenterY + 30);
+            ctx.closePath();
+            ctx.fillStyle = "rgb(255, 245, 210)";
+            ctx.fill();
+            //draw right net when horizontal
+            ctx.beginPath();
+            ctx.arc(
+              catCenterX - 10 + s - 40,
+              catCenterY + 30,
+              40,
+              1 * Math.PI,
+              2 * Math.PI
+            );
+            ctx.lineWidth = "3";
+            ctx.strokeStyle = "rgb(62,47,36)";
+            ctx.stroke();
+          } else {
+            // draw right net stick when sloping
+            ctx.beginPath();
+            ctx.moveTo(
+              catCenterX - 10 - 0.25 * l,
+              catCenterY + 30 + 0.5 * l - 0.433 * l
+            );
+            ctx.lineTo(
+              catCenterX - 10 + 0.25 * l,
+              catCenterY + 30 + 0.5 * l + 0.433 * l
+            );
+            ctx.lineTo(
+              catCenterX - 10 + 0.25 * l + 0.866 * s,
+              catCenterY + 30 + 0.5 * l + 0.433 * l - 0.5 * s
+            );
+            ctx.lineTo(
+              catCenterX - 10 - 0.25 * l + 0.866 * s,
+              catCenterY + 30 + 0.5 * l - 0.433 * l - 0.5 * s
+            );
+            ctx.closePath();
+            ctx.fillStyle = "rgb(255, 245, 210)";
+            ctx.fill();
+            //draw right net when sloping
+            ctx.beginPath();
+            ctx.arc(
+              catCenterX - 10 - 0.25 * l + 0.866 * s - 0.866 * 40,
+              catCenterY + 30 + 0.5 * l - 0.433 * l - 0.5 * s + 0.5 * 40,
+              40,
+              (1 - 0.167) * Math.PI,
+              (2 - 0.167) * Math.PI
+            );
+            ctx.lineWidth = "3";
+            ctx.strokeStyle = "rgb(62,47,36)";
+            ctx.stroke();
+          }
+
+          //draw left hand
+          ctx.beginPath();
+          ctx.moveTo(catCenterX - 10, catCenterY + 20);
+          ctx.lineTo(catCenterX - 10, catCenterY + 40);
+          ctx.arc(catCenterX - 20, catCenterY + 40, 10, 0, 1 * Math.PI);
+          ctx.lineTo(catCenterX - 30, catCenterY + 20);
+          ctx.lineWidth = "5";
+          ctx.strokeStyle = "rgb(62,47,36)";
+          ctx.stroke();
+        }
+      }
+
+      // Combine the keyboard with the net direction
+      var leftKey = "ArrowLeft";
+      var rightKey = "ArrowRight";
+      var upKey = "ArrowUp";
+      var downKey = "ArrowDown";
+      var micMovekey = "Space";
+
+      var leftKeyPressed = false;
+      var rightKeyPressed = false;
+      var upKeyPressed = false;
+      var downKeyPressed = false;
+
+      document.addEventListener("keydown", function (event) {
+        if (event.code == leftKey) leftKeyPressed = true;
+        else if (event.code == rightKey) rightKeyPressed = true;
+        else if (event.code == upKey) upKeyPressed = true;
+        else if (event.code == downKey) downKeyPressed = true;
+        else if (event.code == micMovekey) micMovekeyPressed = true;
+      });
+
+      document.addEventListener("keyup", function (event) {
+        if (event.code == leftKey) leftKeyPressed = false;
+        else if (event.code == rightKey) rightKeyPressed = false;
+        else if (event.code == upKey) upKeyPressed = false;
+        else if (event.code == downKey) downKeyPressed = false;
+        else if (event.code == micMovekey) micMovekeyPressed = false;
+      });
+
+      function moveCat() {
+        const moveSpeed = 4;
+        if (leftKeyPressed) {
+          if (catCenterX > 70) {
+            catCenterX -= moveSpeed;
+          }
+          isNetLeft = true;
+        }
+        if (rightKeyPressed) {
+          if (catCenterX < gameCanvas.width - 70) {
+            catCenterX += moveSpeed;
+          }
+          isNetLeft = false;
+        }
+        if (upKeyPressed) {
+          if (catCenterY > 150) {
+            catCenterY -= moveSpeed;
+          }
+        }
+        if (downKeyPressed) {
+          if (catCenterY < gameCanvas.height - 50) {
+            catCenterY += moveSpeed;
+          }
+        }
+      }
+
+      window.addEventListener(
+        "keydown",
+        (event) => {
+          if (event.keyCode === 32) {
+            isNetDownToHorizontal = true;
+
+            btnPause.disabled = true;
+            btnContinue.disabled = true;
+            btnRestart.disabled = true;
+            btnOneMinute.disabled = true;
+            btnThreeMinutes.disabled = true;
+            btnFourMinutes.disabled = true;
+            btnFiveMinutes.disabled = true;
+          }
+        },
+        false
+      );
+
+      //When key up
+      window.addEventListener(
+        "keyup",
+        (event) => {
+          if (event.keyCode === 32) {
+            isNetDownToHorizontal = false;
+            btnPause.disabled = false;
+            btnContinue.disabled = false;
+            btnRestart.disabled = false;
+            btnOneMinute.disabled = false;
+            btnThreeMinutes.disabled = false;
+            btnFourMinutes.disabled = false;
+            btnFiveMinutes.disabled = false;
+          }
+        },
+        false
+      );
+
+      // Define the ball class
+      class Ball {
+        constructor(x, y, radius, color, createdTime) {
+          this.x = x;
+          this.y = y;
+          this.radius = radius;
+          this.color = color;
+          this.createdTime = createdTime;
+          this.isCaught = false;
+          this.isCollidedWithBody = false;
+        }
+
+        // Define a method to draw the ball
+        drawBall() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+          ctx.fillStyle = this.color;
+          ctx.fill();
+          ctx.closePath();
+        }
+
+        // Define a method to move the ball
+        moveBall(gameTime) {
+          //this.y -= this.speed;
+          if (
+            this.createdTime <= gameTime &&
+            gameTime - this.createdTime <= 5000 //ball grows for 5s
+          ) {
+            this.radius += (20 - 6) / (5000 / 10);
+            this.y = gameCanvas.height - this.radius;
+            if (gameTime - this.createdTime >= 3000) {
+              this.color = "rgb(247, 117, 117)"; // change ball color into red
+            }
+          } else if (
+            gameTime - this.createdTime > 5000 &&
+            gameTime - this.createdTime <= 9000
+          ) {
+            this.radius = 20; // the radius of ball gradually increases until 20px
+          } else if (gameTime - this.createdTime > 9000) {
+            // ball flys 9s after created
+            this.y -= gameCanvas.height / 600;
+          }
+        }
+
+        // Define a method to check if the ball is out of bounds
+        isOutOfBounds() {
+          return this.y + this.radius < 0;
+        }
+
+        //detect collision between ball and net
+        detectNetCollision(gameTime) {
+          netBottomY = catCenterY + 30 + l;
+          if (!isNetDownToHorizontal || gameTime - this.createdTime <= 5000) {
+            return;
+          } else {
+            if (isNetLeft) {
+              netLeftX = catCenterX + 10 - s;
+              netRightX = catCenterX + 10 - s + 80;
+            } else {
+              netLeftX = catCenterX - 10 + s - 80;
+              netRightX = catCenterX - 10 + s;
+            }
+            if (
+              this.y + this.radius <= netBottomY + 30 &&
+              this.y + this.radius >= netBottomY - 40 &&
+              this.x >= netLeftX &&
+              this.x <= netRightX
+            ) {
+              this.isCaught = true;
+              score += 1;
+              document.getElementById("success").play();
+            }
+          }
+        }
+
+        //detect collision between ball and cat body
+        detectBodyCollision(gameTime) {
+          if (gameTime - this.createdTime <= 5000) {
+            return;
+          }
+          if (
+            this.y - this.radius <= catCenterY + 50 &&
+            this.y - this.radius >= catCenterY &&
+            this.x + this.radius >= catCenterX - 50 &&
+            this.x - this.radius <= catCenterX + 50
+          ) {
+            this.isCollidedWithBody = true;
+            score -= 1;
+            document.getElementById("unhappy").play();
+          }
+        }
+      }
+
+      // Define a function to create a new ball
+      function createBall(time) {
+        // Limit the number of balls
+        if (balls.length >= 3) {
+          return;
+        }
+        var x = Math.random() * gameCanvas.width;
+        var radius = 6;
+        var y = gameCanvas.height - radius;
+        var color = `rgb(${Math.floor(Math.random() * 256)},
+          ${Math.floor(Math.random() * 256)},
+          ${Math.floor(Math.random() * 256)})`;
+        var createdTime = time; // get the time when every ball borns
+        var ball = new Ball(x, y, radius, color, createdTime);
+        balls.push(ball);
+      }
+
+      //Create the initial set of balls
+      // for (var i = 0; i < 12; i++) {
+      //   createBall(gameTime);
+      // }
+
+      // Define the animation function
+      function animate() {
+        //When time is over, the game ends
+        if (gameTime > gameTimeLimit) {
+          endGame();
+        }
+        // Clear the canvas
+        ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+        drawCat();
+
+        // Move and draw each ball
+        balls.forEach((ball) => {
+          ball.moveBall(gameTime);
+          ball.detectNetCollision(gameTime);
+          ball.detectBodyCollision(gameTime);
+          ball.drawBall();
+        });
+
+        // Remove balls that are out of bounds, caught by net, or collided with cat body
+        balls = balls.filter(function (ball) {
+          return (
+            !ball.isOutOfBounds() && !ball.isCaught && !ball.isCollidedWithBody
+          );
+        });
+
+        // Create a new ball every 1 to 3 seconds
+        var interval = Math.random() * 2000 + 1000;
+        setTimeout(createBall(gameTime + interval), interval);
+
+        showScore(score);
+        gameTime += 10;
+      }
+    </script>
+  </body>
+</html>
